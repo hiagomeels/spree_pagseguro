@@ -13,8 +13,8 @@ module ActiveMerchant #:nodoc:
         payment = ::PagSeguro::PaymentRequest.new(email: preferences[:email], token: preferences[:token])
 
         payment.reference = options[:order_id]
-        payment.notification_url = nil
-        payment.redirect_url = nil
+        payment.notification_url = notification_url
+        payment.redirect_url = redirect_url
 
         order.line_items.each do |product|
           payment.items << {
