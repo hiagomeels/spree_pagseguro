@@ -7,17 +7,16 @@ Gem::Specification.new do |s|
   s.description = s.summary
   s.required_ruby_version = '>= 2.0.0'
 
-  s.author    = 'João Netto'
-  s.email     = 'hi@joaonetto.me'
-  s.homepage  = 'http://joaonetto.me'
+  s.author    = 'hiagomeels'
+  s.email     = 'hiagomeels@gmail.com'
 
   s.files       = `git ls-files`.split("\n")
   s.test_files  = `git ls-files -- {test,spec,features}/*`.split("\n")
   s.require_path = 'lib'
   s.requirements << 'none'
 
-  s.add_dependency 'spree_core', '~> 2.4.0'
-  s.add_dependency 'pag_seguro'
+  s.add_dependency 'spree_core', '~> 3.0.0'
+  s.add_dependency  'pagseguro-oficial', '~> 2.1.1'
 
   s.add_development_dependency 'capybara', '~> 2.1'
   s.add_development_dependency 'coffee-rails'

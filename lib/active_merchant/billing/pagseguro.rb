@@ -1,47 +1,58 @@
-require 'pag_seguro'
+require 'pagseguro-oficial'
+
 module ActiveMerchant #:nodoc:
   module Billing #:nodoc:
     class Pagseguro < Gateway
 
-      def service_url
-        "https://pagseguro.uol.com.br"
-      end
+      def payment_url(order, options, preferences)
+        ::PagSeguro.environment = preferences[:environment]
 
-      def payment_url(options)
-        redirect_url     = Rails.env.test? ? nil : "#{Spree::Config.site_url}/pagseguro/callback?order=#{options[:order_id]}"
-        notification_url = Rails.env.test? ? nil : "#{Spree::Config.site_url}/pagseguro/notify"
+        redirect_url = "#{preferences[:site_url]}/pagseguro/callback?order=#{options[:order_id]}"
+        notification_url = "#{preferences[:site_url]}/pagseguro/notify"
 
-        payment = ::PagSeguro::Payment.new(options[:email], options[:token],
-        extra_amount: (options[:total] - options[:item_total]).round(2), id: options[:order_id],
-        notification_url: notification_url, redirect_url: redirect_url)
+        payment = ::PagSeguro::PaymentRequest.new(email: preferences[:email], token: preferences[:token])
 
-        payment.items = options[:items].map do |item|
-          product              = ::PagSeguro::Item.new
-          product.id           = item.id
-          product.description  = item.variant.name
-          product.amount       = item.price.round(2)
-          product.weight       = (item.variant.weight * 1000).to_i if item.variant.weight.present?
-          product.quantity     = item.quantity
-          product
+        payment.reference = options[:order_id]
+        payment.notification_url = nil
+        payment.redirect_url = nil
+
+        order.line_items.each do |product|
+          payment.items << {
+              id: product.id,
+              description: product.name,
+              amount: product.price,
+              weight: (product.variant.weight * 1000).to_i
+          }
         end
 
-        payment.sender = ::PagSeguro::Sender.new(
-          name: options[:customer_name], email: options[:customer_email],
-          phone_ddd: options[:customer_ddd], phone_number: options[:customer_phone])
+        payment.sender = {
+            name: [order.bill_address.firstname, order.bill_address.lastname].join(' '),
+            email: order.email,
+        }
 
-        payment.shipping = ::PagSeguro::Shipping.new(
-          type: ::PagSeguro::Shipping::UNIDENTIFIED, state: (options[:state] ? options[:state] : nil),
-          city: options[:city], postal_code: options[:postal_code], street: options[:address])
+        payment.shipping = {
+            type_name: :not_specified,
+            cost: order.shipment_total,
+            address: {
+                street: order.bill_address.address1,
+                complement: order.bill_address.address2,
+                district: order.bill_address.district,
+                city: order.bill_address.city,
+                state: order.bill_address.state.abbr,
+                postal_code: order.bill_address.zipcode
+            }
+        }
 
-        payment
+       payment.register
+
       end
 
       def self.notification(email, token, notification_code)
-        ::PagSeguro::Notification.new(email, token, notification_code)
+        PagSeguro::Transaction.find_by_notification_code(params[:notification_code])
       end
 
       def self.checkout_payment_url(code)
-        ::PagSeguro::Payment.checkout_payment_url(code)
+        ::PagSeguro.site_url("v2/checkout/payment.html?code=#{code}")
       end
 
     end
